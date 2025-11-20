@@ -19,7 +19,6 @@ import { PlacesService, Place } from '../../services/places.service';
         Где поесть?
     </h2>
 
-    <!-- Пандасад -->
     <div 
         class="place-card"
         [style.margin-top.px]="18"
@@ -53,7 +52,6 @@ import { PlacesService, Place } from '../../services/places.service';
     </div>
 
 
-    <!-- Пицца Хот -->
     <div 
         class="place-card"
         [style.margin-top.px]="18"
@@ -87,7 +85,6 @@ import { PlacesService, Place } from '../../services/places.service';
     </div>
 
 
-    <!-- FEIN -->
     <div 
         class="place-card"
         [style.margin-top.px]="18"
@@ -121,7 +118,6 @@ import { PlacesService, Place } from '../../services/places.service';
     </div>
 
 
-    <!-- Картошка -->
     <div 
         class="place-card"
         [style.margin-top.px]="18"
