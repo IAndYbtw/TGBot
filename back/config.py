@@ -1,3 +1,4 @@
+from os import name
 from pathlib import Path
 from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -5,6 +6,7 @@ from aiogram import Bot, Dispatcher
 from fastapi import FastAPI
 from tortoise import Tortoise
 from typing import AsyncGenerator
+import uvicorn
 
 ROOT_DIR = Path(__file__).parent.parent
 
@@ -50,3 +52,29 @@ TORTOISE_ORM = {
         },
     },
 }
+async def lifespan(app: FastAPI) -> AsyncGenerator:
+    await bot.set_webhook(
+        url=f"{config.WEBAPP_URL}/webhook",
+        allowed_updates=dp.resolve_used_update_types(),
+        drop_pending_updates=True
+    )
+
+    await Tortoise.init(TORTOISE_ORM)
+
+    yield
+
+    await Tortoise.close_connections()
+
+
+
+app = FastAPI(lifespan=lifespan)
+
+
+
+if name == "__main__":
+    uvicorn.run(
+        "main:app",
+        host=config.APP_HOST,
+        port=config.APP_PORT,
+        reload=True
+    )
