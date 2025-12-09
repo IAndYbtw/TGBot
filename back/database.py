@@ -17,6 +17,22 @@ class TaskOrm(Model):
     name:Mapped[str]
     description:Mapped[str | None]
 
+class CafeOrm(Model):
+    __tablename__ = "cafes"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str]
+    address: Mapped[str | None]
+
+class MenuItemOrm(Model):
+    __tablename__ = "menu_items"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    cafe_id: Mapped[int] = mapped_column()
+    name: Mapped[str]
+    description: Mapped[str | None]
+    price: Mapped[float]
+
 async def create_tables():
     async with engine.begin() as conn:
         await conn.run_sync(Model.metadata.create_all)

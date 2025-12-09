@@ -23,14 +23,6 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 
-
-class STaskAdd(BaseModel):
-    name: str
-    discription: str | None = None
-
-class STask(STaskAdd):
-    id: int
-
 tasks = []
 
 

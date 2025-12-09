@@ -18,7 +18,8 @@ class TaskRepository:
     
     @classmethod
     async def find_all(cls):
-        query = select(TaskOrm)
-        result = await session.execute(query)
-        task_models = result.scalars().all()
-        return task_models
+        async with new_session() as session:
+            query = select(TaskOrm)
+            result = await session.execute(query)
+            task_models = result.scalars().all()
+            return task_models
