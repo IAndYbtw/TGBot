@@ -22,7 +22,10 @@ class CafeOrm(Model):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str]
-    address: Mapped[str | None]
+    description: Mapped[str | None]
+    category: Mapped[str]
+    location: Mapped[str]
+    icon: Mapped[str]
 
 class MenuItemOrm(Model):
     __tablename__ = "menu_items"
