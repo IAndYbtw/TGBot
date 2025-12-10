@@ -14,7 +14,6 @@ async def lifespan(app: FastAPI):
     await create_tables()
     print("База готова")
     
-    # Загружаем данные из fill_sample_data.py
     await load_sample_data()
     
     yield
@@ -22,7 +21,6 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-# CORS для связи с фронтендом
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # В продакшене укажите конкретный домен
@@ -31,7 +29,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# API endpoints для кафе
+
 @app.get("/")
 async def root():
     """Корневой endpoint"""
@@ -44,8 +42,6 @@ async def root():
         }
     }
 
-# ВАЖНО: Специфичные роуты должны быть ДО общих!
-# Сначала /api/places/{id}/menu, потом /api/places/{id}, потом /api/places
 
 @app.get("/api/places/{place_id}/menu")
 async def get_place_menu(place_id: int):
@@ -53,18 +49,15 @@ async def get_place_menu(place_id: int):
     from database import new_session, MenuItemOrm
     from sqlalchemy import select
     
-    # Проверяем существование места
     place = await PlacesRepository.find_by_id(place_id)
     if not place:
         raise HTTPException(status_code=404, detail=f"Место с ID {place_id} не найдено")
     
-    # Получаем меню
     async with new_session() as session:
         query = select(MenuItemOrm).where(MenuItemOrm.cafe_id == place_id)
         result = await session.execute(query)
         menu_items = result.scalars().all()
         
-        # Возвращаем меню (может быть пустым)
         return {
             "place_id": place_id,
             "place_name": place.name,
@@ -73,7 +66,7 @@ async def get_place_menu(place_id: int):
                     "id": item.id,
                     "name": item.name,
                     "description": item.description,
-                    "price": float(item.price)  # Явно преобразуем в float
+                    "price": float(item.price)  
                 }
                 for item in menu_items
             ]

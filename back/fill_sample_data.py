@@ -2,14 +2,10 @@ import asyncio
 from database import CafeOrm, MenuItemOrm, new_session, create_tables
 
 async def load_sample_data():
-    """
-    Загружает тестовые данные кафе и меню из этого файла
-    """
-    # Создать таблицы, если их ещё нет
+
     await create_tables()
 
     async with new_session() as session:
-        # Добавим кафе с полной информацией
         cafes = [
             CafeOrm(
                 name="Пандасад",
@@ -33,7 +29,7 @@ async def load_sample_data():
                 icon="☕"
             ),
             CafeOrm(
-                name="Картошка",
+                name="Картошечка",
                 description="Аппетитная картошечка в различных вариациях. Фри, по-деревенски, драники и многое другое!",
                 category="Фастфуд",
                 location="3 этаж, переход из ЛК в Учебный корпус",
@@ -42,24 +38,19 @@ async def load_sample_data():
         ]
         
         session.add_all(cafes)
-        await session.flush()  # получим cafe.id
+        await session.flush()  
 
-        # Добавим несколько блюд для каждого кафе
         menu_items = [
-            # Пандасад (Азиатская кухня)
             MenuItemOrm(cafe_id=cafes[0].id, name="Борщ", description="Традиционный русский суп", price=200.0),
             MenuItemOrm(cafe_id=cafes[0].id, name="Пельмени", description="Домашние пельмени", price=250.0),
             MenuItemOrm(cafe_id=cafes[0].id, name="Чай", description="Черный чай", price=50.0),
             
-            # Пицца Хот
             MenuItemOrm(cafe_id=cafes[1].id, name="Пицца Маргарита", description="Классическая пицца с сыром моцарелла", price=300.0),
             MenuItemOrm(cafe_id=cafes[1].id, name="Пицца Пепперони", description="Пицца с острой колбасой пепперони", price=350.0),
             
-            # FEIN (Кофейня)
             MenuItemOrm(cafe_id=cafes[2].id, name="Капучино", description="Классический итальянский кофе", price=150.0),
             MenuItemOrm(cafe_id=cafes[2].id, name="Кока-кола", description="Освежающий напиток", price=100.0),
             
-            # Картошка
             MenuItemOrm(cafe_id=cafes[3].id, name="Картофель фри", description="Хрустящая картошка фри", price=120.0),
             MenuItemOrm(cafe_id=cafes[3].id, name="Картошка по-деревенски", description="Картошка с хрустящей корочкой", price=150.0),
         ]
