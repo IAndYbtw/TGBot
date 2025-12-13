@@ -27,10 +27,8 @@ export interface PlaceMenu {
 
 @Injectable({ providedIn: 'root' })
 export class PlacesService {
-    // URL вашего бэкенда из environment конфигурации
     private apiUrl = `${environment.apiUrl}/places`;
 
-    // Моковые данные в качестве fallback
     private mockPlaces: Place[] = [
         {
             id: 1,
@@ -68,10 +66,7 @@ export class PlacesService {
 
     constructor(private http: HttpClient) {}
 
-    /**
-     * Получить все места
-     * Если бэкенд недоступен, вернутся тестовые данные
-     */
+
     getPlaces(): Observable<Place[]> {
         return this.http.get<Place[]>(this.apiUrl).pipe(
             catchError(error => {
@@ -81,10 +76,7 @@ export class PlacesService {
         );
     }
 
-    /**
-     * Получить место по ID
-     * Если бэкенд недоступен, вернутся тестовые данные
-     */
+
     getPlace(id: number): Observable<Place> {
         return this.http.get<Place>(`${this.apiUrl}/${id}`).pipe(
             catchError(error => {
@@ -95,10 +87,7 @@ export class PlacesService {
         );
     }
 
-    /**
-     * Получить меню кафе
-     * Если бэкенд недоступен, вернется пустой массив
-     */
+
     getPlaceMenu(placeId: number | string): Observable<PlaceMenu> {
         // Проверяем, что placeId - это число
         const id = typeof placeId === 'string' ? Number(placeId) : placeId;
@@ -124,7 +113,6 @@ export class PlacesService {
                     message: error.message,
                     error: error.error
                 });
-                // Возвращаем пустое меню при ошибке
                 return of({
                     place_id: id,
                     place_name: '',
@@ -134,9 +122,6 @@ export class PlacesService {
         );
     }
 
-    /**
-     * Создать новое место
-     */
     createPlace(place: Omit<Place, 'id'>): Observable<Place> {
         return this.http.post<Place>(this.apiUrl, place);
     }

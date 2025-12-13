@@ -46,7 +46,6 @@ import { PlacesService, Place, PlaceMenu, MenuItem } from '../../services/places
         <div class="action-buttons">
             <button class="primary-button">
                 <span>Заказать</span>
-                <span class="button-emoji">🛒</span>
             </button>
         </div>
     </div>
