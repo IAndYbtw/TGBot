@@ -14,6 +14,10 @@ import { PlacesService, Place } from '../../services/places.service';
             <p class="subtitle">Выберите место по вкусу</p>
         </header>
 
+        <div>
+            <p>Места в ГУУ</p>
+        </div>
+
         <div class="places-grid">
             <div class="place-card" 
                  *ngFor="let place of places" 
