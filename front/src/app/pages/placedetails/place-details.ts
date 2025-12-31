@@ -1,8 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
-import { PlacesService, Place, PlaceMenu, MenuItem } from '../../services/places.service';
-import { FormsModule } from '@angular/forms';
+import { PlacesService, Place, MenuItem } from '../../services/places.service';
 
 @Component({
     standalone: true,
@@ -32,11 +31,14 @@ import { FormsModule } from '@angular/forms';
         <div class="menu-card" *ngIf="menu && menu.length > 0">
             <h2 class="menu-title">Меню</h2>
             <div class="menu-items">
-                <div class="menu-item" *ngFor="let item of menu">
+                <div class="menu-item" *ngFor="let item of filteredMenu">
                     <div class="menu-item-content">
                         <div class="menu-item-name">{{ item.name }}</div>
                         <div class="menu-item-description" *ngIf="item.description">
                             {{ item.description }}
+                        </div>
+                        <div class="menu-item-category" *ngIf="item.category">
+                            {{ item.category }}
                         </div>
                     </div>
                     <div class="menu-item-price">
@@ -46,7 +48,11 @@ import { FormsModule } from '@angular/forms';
             </div>
         </div>
 
-        <div class="menu-empty"  *ngIf="menu && menu.length === 0">
+        <div class="menu-empty" *ngIf="filteredMenu && filteredMenu.length === 0 && menu.length > 0">
+            <p>Ничего не найдено</p>
+        </div>
+
+        <div class="menu-empty" *ngIf="menu && menu.length === 0">
             <p>Меню пока не добавлено</p>
         </div>
     </div>
@@ -368,6 +374,50 @@ import { FormsModule } from '@angular/forms';
             margin: 0;
         }
 
+        .menu-item-category {
+            font-size: clamp(11px, 3vw, 12px);
+            color: var(--tg-theme-button-color);
+            background: var(--tg-theme-secondary-bg-color);
+            padding: 2px 8px;
+            border-radius: 10px;
+            display: inline-block;
+            margin-top: 6px;
+        }
+
+        .menu-categories {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 16px;
+            justify-content: center;
+        }
+
+        .menu-categories button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 20px;
+            background: var(--tg-theme-secondary-bg-color);
+            color: var(--tg-theme-text-color);
+            font-size: clamp(13px, 3.5vw, 14px);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .menu-categories button:active {
+            transform: scale(0.95);
+        }
+
+        .menu-categories button.active {
+            background: var(--tg-theme-button-color);
+            color: var(--tg-theme-button-text-color);
+        }
+
+        @media (hover: hover) {
+            .menu-categories button:hover {
+                opacity: 0.85;
+            }
+        }
+
         .menu-item-price {
             font-size: clamp(17px, 4.5vw, 18px);
             font-weight: 700;
@@ -448,13 +498,10 @@ import { FormsModule } from '@angular/forms';
     `]
 })
 export class PlaceDetailsPage implements OnInit {
-
-    searchQuery = ''
     selectedCategory = 'all';
     place!: Place;
     menu: MenuItem[] = [];
-    filteredMenu: MenuItem [] = [];
-    allMenuItems: MenuItem [] = [];
+    filteredMenu: MenuItem[] = [];
 
     constructor(
         private route: ActivatedRoute,
@@ -468,63 +515,24 @@ export class PlaceDetailsPage implements OnInit {
     }
 
     filterMenu() {
-        const query = this.searchQuery.toLowerCase().trim();
-
-        this.filteredMenu = this.menu.filter(item => {
-            const matchesText =
-            item.name.toLowerCase().includes(query) ||
-            item.description.toLowerCase().includes(query);
-
-            const matchesCategory =
-            this.selectedCategory === 'all' ||
-            item.category === this.selectedCategory;
-
-            return matchesText && matchesCategory;
-        });
+        if (this.selectedCategory === 'all') {
+            this.filteredMenu = this.menu;
+        } else {
+            this.filteredMenu = this.menu.filter(item =>
+                item.category === this.selectedCategory
+            );
+        }
     }
 
     ngOnInit() {
-        const routeIdFromParamMap = this.route.snapshot.paramMap.get('id');
-        const routeIdFromParams = this.route.snapshot.params['id'];
-        const routeId = routeIdFromParamMap || routeIdFromParams;
-        const placeId = Number(this.route.snapshot.paramMap.get('id'));
-        const id = Number(this.route.snapshot.paramMap.get('id'));
+        const routeId = this.route.snapshot.paramMap.get('id');
+        const id = Number(routeId);
 
-        this.placesService.getMenuByCafeId(id).subscribe(place => {
-            this.menu = place;
-        });
-
-        this.placesService.getMenuItems().subscribe(items => {
-            this.allMenuItems = this.menu;
-
-            this.menu = items.filter(item => item.cafe_id === placeId);
-            this.filteredMenu = this.menu;
-        });
-
-
-        console.log(this.menu)
-        console.log('Route params:', {
-            fromParamMap: routeIdFromParamMap,
-            fromParams: routeIdFromParams,
-            final: routeId,
-            allParams: this.route.snapshot.params
-        });
-        
-        // Проверяем, что ID валидный
-        if (!routeId) {
-            console.error('ID not found in route params');
+        if (!routeId || isNaN(id) || id <= 0) {
+            console.error('Invalid place ID:', routeId);
             this.router.navigate(['/']);
             return;
         }
-        
-        
-        if (isNaN(id) || id <= 0) {
-            console.error('Invalid place ID:', routeId, '->', id);
-            this.router.navigate(['/']);
-            return;
-        }
-        
-        console.log('Loading place with ID:', id, '(type:', typeof id, ')');
 
         // Загружаем информацию о месте
         this.placesService.getPlace(id).subscribe(data => {
@@ -534,6 +542,7 @@ export class PlaceDetailsPage implements OnInit {
         // Загружаем меню кафе
         this.placesService.getPlaceMenu(id).subscribe(data => {
             this.menu = data;
+            this.filteredMenu = data;
         });
     }
 

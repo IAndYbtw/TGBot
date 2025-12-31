@@ -1,26 +1,48 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
-import { PlacesService, Place } from '../../services/places.service';
+import { PlacesService, Place, FoodSearchResult } from '../../services/places.service';
 import { FormsModule } from '@angular/forms';
+import { debounceTime, Subject } from 'rxjs';
 declare const ymaps: any;
 
 @Component({
     standalone: true,
     selector: 'app-places',
     imports: [CommonModule, FormsModule],
-    template: ` 
+    template: `
     <div class="search-box">
-        <div> 
-            <input 
-            type="text" 
-            placeholder="Например: кофе, пицца..."
+        <div>
+            <input
+            type="text"
+            placeholder="Поиск еды: пицца, кофе, суп..."
             [(ngModel)]="searchQuery"
-            (input)="filterPlaces()"
+            (input)="onSearchInput()"
             />
         </div>
     </div>
-    <div class="container fade-in">
+
+    <!-- Результаты поиска еды -->
+    <div class="food-results" *ngIf="foodResults.length > 0">
+        <div class="results-header">
+            <p>Найдено блюд: {{ foodResults.length }}</p>
+            <button class="clear-btn" (click)="clearSearch()">Очистить</button>
+        </div>
+        <div class="food-card" *ngFor="let item of foodResults" (click)="openPlace(item.cafe_id)">
+            <div class="food-icon">{{ item.cafe_icon }}</div>
+            <div class="food-content">
+                <div class="food-name">{{ item.name }}</div>
+                <div class="food-description" *ngIf="item.description">{{ item.description }}</div>
+                <div class="food-meta">
+                    <span class="food-category">{{ item.category }}</span>
+                    <span class="food-cafe">{{ item.cafe_name }}</span>
+                </div>
+            </div>
+            <div class="food-price">{{ item.price | number:'1.0-0' }} ₽</div>
+        </div>
+    </div>
+
+    <div class="container fade-in" *ngIf="foodResults.length === 0">
         <header class="header">
             <h1 class="title">Где поесть?</h1>
             <p class="subtitle">Выберите место по вкусу</p>
@@ -31,8 +53,8 @@ declare const ymaps: any;
         </div>
 
         <div class="places-grid">
-            <div class="place-card" 
-                 *ngFor="let place of filtredPlaces" 
+            <div class="place-card"
+                 *ngFor="let place of filtredPlaces"
                     (click)="openPlace(place.id)">
                 <div class="place-icon">{{ place.icon }}</div>
                 <div class="place-content">
@@ -328,6 +350,107 @@ declare const ymaps: any;
             color: var(--tg-theme-hint-color);
         }
 
+        .food-results {
+            margin-bottom: 20px;
+        }
+
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .results-header p {
+            margin: 0;
+            font-size: 14px;
+            color: var(--tg-theme-hint-color);
+        }
+
+        .clear-btn {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 16px;
+            background: var(--tg-theme-secondary-bg-color);
+            color: var(--tg-theme-button-color);
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        .food-card {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            background: var(--tg-theme-secondary-bg-color);
+            border-radius: var(--card-radius);
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .food-card:active {
+            transform: scale(0.98);
+        }
+
+        .food-icon {
+            font-size: 28px;
+            margin-right: 12px;
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--tg-theme-bg-color);
+            border-radius: 10px;
+            flex-shrink: 0;
+        }
+
+        .food-content {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .food-name {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--tg-theme-text-color);
+            margin-bottom: 2px;
+        }
+
+        .food-description {
+            font-size: 12px;
+            color: var(--tg-theme-hint-color);
+            margin-bottom: 4px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .food-meta {
+            display: flex;
+            gap: 8px;
+            font-size: 11px;
+        }
+
+        .food-category {
+            color: var(--tg-theme-button-color);
+            background: var(--tg-theme-bg-color);
+            padding: 2px 6px;
+            border-radius: 8px;
+        }
+
+        .food-cafe {
+            color: var(--tg-theme-hint-color);
+        }
+
+        .food-price {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--tg-theme-button-color);
+            margin-left: 10px;
+            flex-shrink: 0;
+        }
+
         @media (max-width: 375px) {
             .loading {
                 padding: 30px 16px;
@@ -383,18 +506,46 @@ declare const ymaps: any;
 
 
 export class PlacesPage implements OnInit {
-
     places: Place[] = [];
     map: any;
     searchQuery = '';
     filtredPlaces: Place[] = [];
-
+    foodResults: FoodSearchResult[] = [];
+    private searchSubject = new Subject<string>();
 
     constructor(
         private placesService: PlacesService,
         private router: Router
-    ) {}
-    
+    ) {
+        this.searchSubject.pipe(
+            debounceTime(300)
+        ).subscribe(query => {
+            this.searchFood(query);
+        });
+    }
+
+    onSearchInput() {
+        this.searchSubject.next(this.searchQuery);
+    }
+
+    searchFood(query: string) {
+        if (!query || query.trim().length < 2) {
+            this.foodResults = [];
+            this.filterPlaces();
+            return;
+        }
+
+        this.placesService.searchFood(query).subscribe(results => {
+            this.foodResults = results;
+        });
+    }
+
+    clearSearch() {
+        this.searchQuery = '';
+        this.foodResults = [];
+        this.filtredPlaces = this.places;
+    }
+
     filterPlaces() {
         const query = this.searchQuery.toLowerCase().trim();
 
@@ -410,12 +561,11 @@ export class PlacesPage implements OnInit {
         );
     }
 
-
     ngOnInit() {
         this.placesService.getPlaces().subscribe(data => {
             this.places = data;
             this.filtredPlaces = data;
-            this.initMap()
+            this.initMap();
         });
     }
 

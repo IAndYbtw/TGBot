@@ -30,6 +30,18 @@ export interface PlaceMenu {
     menu: MenuItem[];
 }
 
+export interface FoodSearchResult {
+    id: number;
+    name: string;
+    description: string | null;
+    category: string;
+    price: number;
+    cafe_id: number;
+    cafe_name: string;
+    cafe_icon: string;
+    cafe_location: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class CafeService {
     constructor(private http: HttpClient) {}
@@ -145,5 +157,17 @@ export class PlacesService {
 
     createPlace(place: Omit<Place, 'id'>): Observable<Place> {
         return this.http.post<Place>(this.apiUrl, place);
+    }
+
+    searchFood(query: string): Observable<FoodSearchResult[]> {
+        if (!query || query.trim().length < 2) {
+            return of([]);
+        }
+        return this.http.get<FoodSearchResult[]>(`${environment.apiUrl}/menu/search?q=${encodeURIComponent(query)}`).pipe(
+            catchError(error => {
+                console.error('Ошибка поиска еды:', error);
+                return of([]);
+            })
+        );
     }
 }

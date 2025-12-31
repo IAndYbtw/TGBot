@@ -129,6 +129,46 @@ async def search_food(query: ChatQuery):
     return result
 
 
+@app.get("/api/menu/search")
+async def search_menu(q: str = ""):
+    """Поиск блюд по названию, описанию или категории"""
+    from database import new_session, MenuItemOrm, CafeOrm
+    from sqlalchemy import select, or_
+
+    if not q or len(q.strip()) < 2:
+        return []
+
+    query_lower = q.lower().strip()
+
+    async with new_session() as session:
+        # Получаем все блюда с информацией о кафе
+        stmt = select(MenuItemOrm, CafeOrm).join(CafeOrm, MenuItemOrm.cafe_id == CafeOrm.id)
+        result = await session.execute(stmt)
+        rows = result.all()
+
+        # Фильтруем по запросу
+        matching_items = []
+        for menu_item, cafe in rows:
+            name_match = query_lower in menu_item.name.lower()
+            desc_match = menu_item.description and query_lower in menu_item.description.lower()
+            cat_match = menu_item.category and query_lower in menu_item.category.lower()
+
+            if name_match or desc_match or cat_match:
+                matching_items.append({
+                    "id": menu_item.id,
+                    "name": menu_item.name,
+                    "description": menu_item.description,
+                    "category": menu_item.category,
+                    "price": float(menu_item.price),
+                    "cafe_id": cafe.id,
+                    "cafe_name": cafe.name,
+                    "cafe_icon": cafe.icon,
+                    "cafe_location": cafe.location
+                })
+
+        return matching_items
+
+
 @app.post("/api/places/fetch-from-api")
 async def fetch_places_from_api():
     """Загрузить кафе из Google Places API и сохранить в базу"""
