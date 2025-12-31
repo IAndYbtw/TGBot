@@ -26,6 +26,8 @@ class CafeOrm(Model):
     category: Mapped[str]
     location: Mapped[str]
     icon: Mapped[str]
+    lat: Mapped[float]
+    lon: Mapped[float]
 
 class MenuItemOrm(Model):
     __tablename__ = "menu_items"
@@ -34,6 +36,7 @@ class MenuItemOrm(Model):
     cafe_id: Mapped[int] = mapped_column()
     name: Mapped[str]
     description: Mapped[str | None]
+    category: Mapped[str]
     price: Mapped[float]
 
 async def create_tables():

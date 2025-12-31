@@ -2,26 +2,38 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { PlacesService, Place } from '../../services/places.service';
+import { FormsModule } from '@angular/forms';
+declare const ymaps: any;
 
 @Component({
     standalone: true,
     selector: 'app-places',
-    imports: [CommonModule],
+    imports: [CommonModule, FormsModule],
     template: ` 
+    <div class="search-box">
+        <div> 
+            <input 
+            type="text" 
+            placeholder="Например: кофе, пицца..."
+            [(ngModel)]="searchQuery"
+            (input)="filterPlaces()"
+            />
+        </div>
+    </div>
     <div class="container fade-in">
         <header class="header">
             <h1 class="title">Где поесть?</h1>
             <p class="subtitle">Выберите место по вкусу</p>
         </header>
 
-        <div>
+        <div class="header-actions">
             <p>Места в ГУУ</p>
         </div>
 
         <div class="places-grid">
             <div class="place-card" 
-                 *ngFor="let place of places" 
-                 (click)="openPlace(place.id)">
+                 *ngFor="let place of filtredPlaces" 
+                    (click)="openPlace(place.id)">
                 <div class="place-icon">{{ place.icon }}</div>
                 <div class="place-content">
                     <h2 class="place-name">{{ place.name }}</h2>
@@ -33,6 +45,7 @@ import { PlacesService, Place } from '../../services/places.service';
                 </div>
                 <div class="place-arrow">›</div>
             </div>
+            <div id="map" class="map"></div>
         </div>
 
         <div class="loading" *ngIf="places.length === 0">
@@ -44,6 +57,41 @@ import { PlacesService, Place } from '../../services/places.service';
         .header {
             margin-bottom: 20px;
             padding: 8px 0;
+        }
+
+        .header-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .header-actions p {
+            margin: 0;
+            font-size: clamp(14px, 4vw, 15px);
+            color: var(--tg-theme-hint-color);
+        }
+
+        .chat-button {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 14px;
+            background: var(--tg-theme-button-color);
+            color: var(--tg-theme-button-text-color);
+            border: none;
+            border-radius: 20px;
+            font-size: clamp(13px, 3.5vw, 14px);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .chat-button:active {
+            transform: scale(0.95);
+        }
+
+        .chat-button span:first-child {
+            font-size: 16px;
         }
 
         .title {
@@ -258,6 +306,28 @@ import { PlacesService, Place } from '../../services/places.service';
             font-size: clamp(14px, 4vw, 15px);
         }
 
+        .search-box {
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 12px 14px;
+            border-radius: 12px;
+            border: none;
+            font-size: 15px;
+            background: var(--tg-theme-secondary-bg-color);
+            color: var(--tg-theme-text-color);
+            outline: none;
+        }
+
+        .search-box input::placeholder {
+            color: var(--tg-theme-hint-color);
+        }
+
         @media (max-width: 375px) {
             .loading {
                 padding: 30px 16px;
@@ -277,7 +347,6 @@ import { PlacesService, Place } from '../../services/places.service';
             }
         }
 
-        /* Улучшение hover эффекта для десктопа */
         @media (hover: hover) {
             .place-card:hover {
                 box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
@@ -288,26 +357,117 @@ import { PlacesService, Place } from '../../services/places.service';
                 opacity: 0.7;
             }
         }
+        .map {
+            width: 100%;
+            height: 260px;
+            border-radius: var(--card-radius);
+            margin-bottom: 16px;
+            overflow: hidden;
+        }
+
+        @media (max-width: 375px) {
+            .map {
+                height: 220px;
+            }
+        }
+
+        @media (min-width: 768px) {
+            .map {
+                height: 320px;
+            }
+        }
     `]
 
 
 })
 
+
 export class PlacesPage implements OnInit {
 
     places: Place[] = [];
+    map: any;
+    searchQuery = '';
+    filtredPlaces: Place[] = [];
+
 
     constructor(
         private placesService: PlacesService,
         private router: Router
     ) {}
+    
+    filterPlaces() {
+        const query = this.searchQuery.toLowerCase().trim();
+
+        if (!query) {
+            this.filtredPlaces = this.places;
+            return;
+        }
+
+        this.filtredPlaces = this.places.filter(place =>
+            place.name.toLowerCase().includes(query) ||
+            place.category.toLowerCase().includes(query) ||
+            place.location.toLowerCase().includes(query)
+        );
+    }
+
 
     ngOnInit() {
         this.placesService.getPlaces().subscribe(data => {
             this.places = data;
+            this.filtredPlaces = data;
+            this.initMap()
         });
     }
 
+    
+    initMap() {
+        if (!this.places.length) return;
+        console.log('ymaps:', (window as any).ymaps)
+
+        ymaps.ready(() => {
+        this.map = new ymaps.Map('map', {
+            center: [55.714354, 37.811395],
+            zoom: 16,
+            controls: ['zoomControl']
+        });
+
+        this.places.forEach(place => {
+            if (!place.lat || !place.lon) return;
+
+            const placemark = new ymaps.Placemark(
+            [place.lat, place.lon],
+            {
+                balloonContent: `
+                <div style="font-size:14px">
+                    <strong>${place.name}</strong><br>
+                    ${place.location}<br><br>
+                    ${place.description}<br>
+
+                    <a 
+                    href="/place/${place.id}" 
+                    style="
+                        display:inline-block;
+                        padding:6px 10px;
+                        background:#1976d2;
+                        color:white;
+                        border-radius:6px;
+                        text-decoration:none;
+                        font-size:13px;
+                    ">
+                    Меню
+                    </a>
+                </div>
+                `
+            },
+            {
+                preset: 'islands#redFoodIcon'
+            }
+            );
+
+            this.map.geoObjects.add(placemark);
+        });
+        });
+    }
     openPlace(id: number) {
         console.log('Opening place with ID:', id, '(type:', typeof id, ')');
         if (!id || isNaN(Number(id))) {
@@ -316,4 +476,5 @@ export class PlacesPage implements OnInit {
         }
         this.router.navigate(['/place', id]);
     }
+
 }

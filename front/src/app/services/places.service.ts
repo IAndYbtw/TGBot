@@ -4,6 +4,8 @@ import { Observable, of, catchError } from 'rxjs';
 import { environment } from '../../environments/environment';
 
 export interface Place {
+    lat: number;
+    lon: number;
     id: number;
     name: string;
     description: string;
@@ -12,10 +14,13 @@ export interface Place {
     icon: string;
 }
 
+
 export interface MenuItem {
     id: number;
+    cafe_id: number;
     name: string;
     description: string | null;
+    category: string;
     price: number;
 }
 
@@ -26,39 +31,56 @@ export interface PlaceMenu {
 }
 
 @Injectable({ providedIn: 'root' })
+export class CafeService {
+    constructor(private http: HttpClient) {}
+
+    getCafes() {
+        return this.http.get<any[]>('/cafes');
+    }
+}
+
+@Injectable({ providedIn: 'root' })
 export class PlacesService {
     private apiUrl = `${environment.apiUrl}/places`;
 
     private mockPlaces: Place[] = [
         {
+            lat: 55.714069,
+            lon: 37.811555,
             id: 1,
             name: 'Пандасад',
-            description: 'Вкусная азиатская кухня с большим выбором блюд. Здесь вы найдете лапшу, рис, супы и многое другое.',
+            description: 'Вкусная азиатская кухня с большим выбором блюд.',
             category: 'Азиатская кухня',
             location: 'Учебный корпус',
             icon: '🍜'
         },
         {
+            lat: 55.713434,
+            lon: 37.815917,
             id: 2,
             name: 'Пицца Хот',
-            description: 'Свежая горячая пицца на любой вкус. Готовим быстро, доставляем горячей!',
+            description: 'Свежая горячая пицца на любой вкус.',
             category: 'Итальянская кухня',
             location: 'ПА, 2 этаж',
             icon: '🍕'
         },
         {
+            lat: 55.713469,
+            lon: 37.815382,
             id: 3,
             name: 'FEIN',
-            description: 'Лучший кофе в кампусе! Также большой выбор чая, смузи и других напитков.',
+            description: 'Лучший кофе в кампусе! Также большой выбор кофе и других напитков.',
             category: 'Кофейня',
             location: 'ЛК, 1 этаж',
             icon: '☕'
         },
         {
+            lat: 55.713996,
+            lon: 37.813418,
             id: 4,
             name: 'Картошка',
-            description: 'Аппетитная картошечка в различных вариациях. Фри, по-деревенски, драники и многое другое!',
-            category: 'Фастфуд',
+            description: 'Аппетитная картошечка в различных вариациях.',
+            category: 'Картофельная кухня',
             location: '3 этаж, переход ЛК → УК',
             icon: '🥔'
         }
@@ -86,25 +108,28 @@ export class PlacesService {
             })
         );
     }
+    
+    getMenuItems(){
+        return this.http.get<MenuItem[]>('/menu-items');
+    }
+
+    getMenuByCafeId(id: number){
+        return this.http.get<MenuItem[]>('/place/${placeId}/menu')
+    }
 
 
-    getPlaceMenu(placeId: number | string): Observable<PlaceMenu> {
-        // Проверяем, что placeId - это число
+    getPlaceMenu(placeId: number | string): Observable<MenuItem[]> {
         const id = typeof placeId === 'string' ? Number(placeId) : placeId;
         
         if (isNaN(id) || id <= 0) {
             console.error('Invalid placeId:', placeId);
-            return of({
-                place_id: 0,
-                place_name: '',
-                menu: []
-            });
+            return of([]);
         }
         
         const menuUrl = `${this.apiUrl}/${id}/menu`;
         console.log('Запрос меню - placeId:', placeId, '-> URL:', menuUrl);
         
-        return this.http.get<PlaceMenu>(menuUrl).pipe(
+        return this.http.get<MenuItem[]>(menuUrl).pipe(
             catchError(error => {
                 console.error('Ошибка загрузки меню:', {
                     placeId: placeId,
@@ -113,11 +138,7 @@ export class PlacesService {
                     message: error.message,
                     error: error.error
                 });
-                return of({
-                    place_id: id,
-                    place_name: '',
-                    menu: []
-                });
+                return of([]);
             })
         );
     }

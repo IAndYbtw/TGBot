@@ -6,6 +6,8 @@ class PlaceBase(BaseModel):
     category: str
     location: str
     icon: str = "🍽️"
+    lat: float
+    lon: float
 
 class PlaceCreate(PlaceBase):
     pass
@@ -19,6 +21,7 @@ class Place(PlaceBase):
 class MenuItemBase(BaseModel):
     name: str
     description: str | None = None
+    category: str  | None = None
     price: float
 
 class MenuItem(MenuItemBase):

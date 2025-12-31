@@ -1,4 +1,5 @@
-import { DOCUMENT, Inject, Injectable } from '@angular/core';
+import { DOCUMENT } from '@angular/common';
+import { Inject, Injectable } from '@angular/core';
 
 interface TgButton {
   show(): void;
@@ -9,15 +10,30 @@ interface TgButton {
 @Injectable({
   providedIn: 'root',
 })
-export class Telegram {
-  private window;
-  tg;
-  constructor(@Inject(DOCUMENT) private _document) {
-    this.window = this._document.defaultView;
-    this.tg = this.window.Telegram.WebApp;
+export class TelegramService {
+
+  tg: any = null;
+
+  constructor(@Inject(DOCUMENT) private document: Document) {
+    const window = this.document.defaultView as any;
+
+    // ✅ ВАЖНАЯ ПРОВЕРКА
+    if (window && window.Telegram && window.Telegram.WebApp) {
+      this.tg = window.Telegram.WebApp;
+      this.tg.ready();
+      this.tg.expand();
+    } else {
+      console.warn('Telegram WebApp API недоступен (браузер)');
+    }
   }
 
-  /*get MainButton (): TgButton {
-    return this.tg.MainButton;/*кнопка continue
-  }*/
+  /** Проверка — мы в Telegram или нет */
+  isTelegram(): boolean {
+    return !!this.tg;
+  }
+
+  /** Пример безопасного доступа к кнопке */
+  getMainButton(): TgButton | null {
+    return this.tg ? this.tg.MainButton : null;
+  }
 }

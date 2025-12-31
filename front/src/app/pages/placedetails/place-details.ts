@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { PlacesService, Place, PlaceMenu, MenuItem } from '../../services/places.service';
+import { FormsModule } from '@angular/forms';
 
 @Component({
     standalone: true,
@@ -17,15 +18,21 @@ import { PlacesService, Place, PlaceMenu, MenuItem } from '../../services/places
         <div class="place-header">
             <div class="place-icon-large">{{ place.icon }}</div>
             <h1 class="place-title">{{ place.name }}</h1>
-        </div>
-
-        
+            <div class="menu-categories">
+                <button
+                *ngFor="let cat of categories"
+                (click)="selectedCategory = cat; filterMenu()"
+                [class.active]='cat === selectedCategory'>
+                    {{cat === 'all' ? 'Все' : cat}}
+                </button>
+            </div>
+        </div>      
 
         <!-- Меню кафе -->
-        <div class="menu-card" *ngIf="menu && menu.menu.length > 0">
+        <div class="menu-card" *ngIf="menu && menu.length > 0">
             <h2 class="menu-title">Меню</h2>
             <div class="menu-items">
-                <div class="menu-item" *ngFor="let item of menu.menu">
+                <div class="menu-item" *ngFor="let item of menu">
                     <div class="menu-item-content">
                         <div class="menu-item-name">{{ item.name }}</div>
                         <div class="menu-item-description" *ngIf="item.description">
@@ -39,14 +46,8 @@ import { PlacesService, Place, PlaceMenu, MenuItem } from '../../services/places
             </div>
         </div>
 
-        <div class="menu-empty"  *ngIf="menu && menu.menu.length === 0">
+        <div class="menu-empty"  *ngIf="menu && menu.length === 0">
             <p>Меню пока не добавлено</p>
-        </div>
-
-        <div class="action-buttons">
-            <button class="primary-button">
-                <span>Заказать</span>
-            </button>
         </div>
     </div>
 
@@ -407,74 +408,13 @@ import { PlacesService, Place, PlaceMenu, MenuItem } from '../../services/places
             }
         }
 
-        .action-buttons {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        margin-top: 20px;
-        }
 
-        @media (max-width: 375px) {
-            .action-buttons {
-                gap: 8px;
-                margin-top: 16px;
-            }
-        }
 
-        @media (min-width: 768px) {
-            .action-buttons {
-                gap: 14px;
-                margin-top: 28px;
-            }
-        }
-
-        .primary-button {
-            width: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            padding: 14px 24px;
-            font-size: clamp(16px, 4.2vw, 17px);
-            font-weight: 600;
-            border-radius: 14px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-            min-height: 52px;
-        }
-
-        @media (max-width: 375px) {
-            .primary-button {
-                padding: 12px 20px;
-                min-height: 48px;
-            }
-        }
-
-        @media (min-width: 768px) {
-            .primary-button {
-                padding: 16px 28px;
-                min-height: 56px;
-                border-radius: 16px;
-            }
-        }
 
         .button-emoji {
             font-size: clamp(17px, 4.5vw, 18px);
         }
 
-        .primary-button:active {
-            transform: scale(0.97);
-        }
-
-        @media (hover: hover) {
-            .primary-button:hover {
-                box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
-                transform: translateY(-2px);
-            }
-
-            .primary-button:active {
-                transform: translateY(0) scale(0.98);
-            }
-        }
 
         .loading {
             text-align: center;
@@ -504,17 +444,17 @@ import { PlacesService, Place, PlaceMenu, MenuItem } from '../../services/places
             .place-icon-large {
                 box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
             }
-
-            .primary-button {
-                box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
-            }
     }
     `]
 })
 export class PlaceDetailsPage implements OnInit {
 
+    searchQuery = ''
+    selectedCategory = 'all';
     place!: Place;
-    menu: PlaceMenu | null = null;
+    menu: MenuItem[] = [];
+    filteredMenu: MenuItem [] = [];
+    allMenuItems: MenuItem [] = [];
 
     constructor(
         private route: ActivatedRoute,
@@ -522,12 +462,47 @@ export class PlaceDetailsPage implements OnInit {
         private placesService: PlacesService
     ) {}
 
+    get categories(): string[] {
+        const cats = this.menu.map( i => i.category).filter(Boolean);
+        return [ 'all', ...Array.from(new Set(cats))]
+    }
+
+    filterMenu() {
+        const query = this.searchQuery.toLowerCase().trim();
+
+        this.filteredMenu = this.menu.filter(item => {
+            const matchesText =
+            item.name.toLowerCase().includes(query) ||
+            item.description.toLowerCase().includes(query);
+
+            const matchesCategory =
+            this.selectedCategory === 'all' ||
+            item.category === this.selectedCategory;
+
+            return matchesText && matchesCategory;
+        });
+    }
+
     ngOnInit() {
-        // Получаем ID из параметров роута разными способами для диагностики
         const routeIdFromParamMap = this.route.snapshot.paramMap.get('id');
         const routeIdFromParams = this.route.snapshot.params['id'];
         const routeId = routeIdFromParamMap || routeIdFromParams;
-        
+        const placeId = Number(this.route.snapshot.paramMap.get('id'));
+        const id = Number(this.route.snapshot.paramMap.get('id'));
+
+        this.placesService.getMenuByCafeId(id).subscribe(place => {
+            this.menu = place;
+        });
+
+        this.placesService.getMenuItems().subscribe(items => {
+            this.allMenuItems = this.menu;
+
+            this.menu = items.filter(item => item.cafe_id === placeId);
+            this.filteredMenu = this.menu;
+        });
+
+
+        console.log(this.menu)
         console.log('Route params:', {
             fromParamMap: routeIdFromParamMap,
             fromParams: routeIdFromParams,
@@ -542,7 +517,6 @@ export class PlaceDetailsPage implements OnInit {
             return;
         }
         
-        const id = Number(routeId);
         
         if (isNaN(id) || id <= 0) {
             console.error('Invalid place ID:', routeId, '->', id);
